@@ -1,0 +1,8 @@
+venv
+build.sh
+givemedata/__pycache__
+build
+dist
+givemedata.egg-info
+.idea
+build.sh
