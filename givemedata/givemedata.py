@@ -140,7 +140,7 @@ class DB(DataProvider):
 
     def sql(self, query, limit=2000):
         # emergency limiting so nothing will explode :)
-        if 'limit' not in query.lower():
+        if limit is not None and 'limit' not in query.lower():
             query = query.replace('\n', ' ').strip().rstrip(';') + f' limit {limit};'
 
         return pd.read_sql(query, self._engine)
