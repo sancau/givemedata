@@ -9,11 +9,11 @@ Using multiple data sources may become a pain to manage. You have different cred
 
 Here is a simple example:
 
-#### Step 1:
+#### Step 1 (Installation):
 
 `pip install givemedata`
 
-#### Step 2:
+#### Step 2 (Configuration):
 
 Create a configuration file in YAML format - either in your home directory to use just by yourself or in `/etc/givemedata/`
 to provide the configuration to multiple users at once (e.g. if you're using JupyterHub)
@@ -41,7 +41,7 @@ is most intuitive and clear.
 Basically you define a dictionary-like stucture that can be recursively nested.
 Data sources are defined as connection strinsg like this: `<DB_TYPE>://<DB_USER>:<DB_PASSWORD>@<IP>:<PORT>/web_app_backend`
 
-#### Step 3:
+#### Step 3 (Loading givemedata object):
 
 In a Python console of your choice (IPython, Jupyter, an IDE, whatever..):
 
@@ -54,7 +54,7 @@ Let's assume we want to address the Analytics db on production. This can me made
 
 `db = Data.Work.Prod.Analytics`
 
-#### Step 4:
+#### Step 4 (Using data sources):
 
 The DB object in `givemedata` have a few methods attached to it:
 
@@ -66,11 +66,12 @@ The DB object in `givemedata` have a few methods attached to it:
 
 ##### These properties also provide some helpers:
 
-- [for both - fields and tables]
--`search(term_as_string)` -> searches the table/field names by the given term
+- (for both - fields and tables)
+- `search(term_as_string)` -> searches the table/field names by the given term -> returns object similar to itself so can be chained
+- `sample(df_index_as_int)` -> displays sample of table rows or field values
 
-- [for tables only]
-- `sample(df_index_as_int)` -> displays sample of table rows and metadata about the fields in the table
+- (for tables only)
+- `describe(df_index_as_int)` -> displays meta data about the table - fields, datatypes, etc
 
 #### Limitations & Other Notes
 
