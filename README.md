@@ -58,19 +58,19 @@ Let's assume we want to address the Analytics db on production. This can me made
 
 The DB object in `givemedata` have a few methods attached to it:
 
-`sql(query, *, limit)` -> returns an SQL query result as a Pandas DataFrame
-`public_tables` (property) -> returns a dataframe with information about all public tables in the DB.
-`all_tables` (property) -> returns a dataframe with information about all tables in the DB - both public and service.
-`public_fields` (property) -> all public fields
-`all_fields` (property) -> all fields, public and service
+- `sql(query, *, limit)` -> returns an SQL query result as a Pandas DataFrame
+- `public_tables` (property) -> returns a dataframe with information about all public tables in the DB.
+- `all_tables` (property) -> returns a dataframe with information about all tables in the DB - both public and service.
+- `public_fields` (property) -> all public fields
+- `all_fields` (property) -> all fields, public and service
 
-These properties also provide some helpers:
+##### These properties also provide some helpers:
 
-[for both - fields and tables]
-`search(term_as_string)` -> searches the table/field names by the given term
+- [for both - fields and tables]
+-`search(term_as_string)` -> searches the table/field names by the given term
 
-[for tables only]
-`sample(df_index_as_int)` -> displays sample of table rows and metadata about the fields in the table
+- [for tables only]
+- `sample(df_index_as_int)` -> displays sample of table rows and metadata about the fields in the table
 
 #### Limitations & Other Notes
 
