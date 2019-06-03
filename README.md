@@ -1,2 +1,55 @@
 # givemedata
 A convenient way to use and explore multiple databases from Python
+
+### What is this?
+Using multiple data sources may become a pain to manage. You have different credentials here and there, different db names, different drivers and wrappers. You don't like that, do you?
+
+- Givemedata is a Python tool that allows to define a single configuration file containing all the data sources that you are using
+- Then it provides a simple way to access all of those data sources leveraging the power of Pandas
+
+Here is a simple example:
+
+#### Step 1:
+
+`pip install givemedata`
+
+#### Step 2:
+
+Create a configuration file in YAML format - either in your home directory to use just by yourself or in `/etc/givemedata/`
+to provide the configuration to multiple users at once (e.g. if you're using JupyterHub)
+
+The file must be named either `givemedata.yaml` or `.givemedata.yaml` (in case if you prefer to have a hidden file)
+
+Example of configuration:
+
+```
+Work:
+  Prod:
+    WebApp:
+      RO: postgresql://read_only_user:secret@112.0.3.56:5432/web
+      RW: postgresql://read_write_user:secret@174.0.33.1:5432/web
+    Analytics: postgresql://analytics_prod_user:secret@171.0.3.34:5432/analytics
+  Stage:
+    Analytics: postgresql://analytics_stage_user:secret@172.0.3.67:5432/analytics
+Personal:
+  ML_class: postgresql://me:secret@127.0.0.1:5432/ml
+```
+
+As you can see `givemedata` supports hierarhical structure where you can logically place your data sources in a way that
+is most intuitive and clear.
+
+Basically you define a dictionary-like stucture that can be recursively nested.
+Data sources are defined as connection strinsg like this: `<DB_TYPE>://<DB_USER>:<DB_PASSWORD>@<IP>:<PORT>/web_app_backend`
+
+#### Step 3:
+
+In a Python console of your choice (IPython, Jupyter, an IDE, whatever..):
+
+`from givemedata import Data`
+
+Data is an interface object created by `givemedata` based on the config you've just specified.
+It has the same nested structure as the config and even *supports autocompletion* :).
+
+By now only PostgreSQL is supported as the project is the earliest possible development stage. This was made to support my own
+workflow but I have plans to improve this and add support for different databases such as MySQL, SQLite3, Cassandra, etc
+
