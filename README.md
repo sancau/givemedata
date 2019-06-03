@@ -48,8 +48,31 @@ In a Python console of your choice (IPython, Jupyter, an IDE, whatever..):
 `from givemedata import Data`
 
 Data is an interface object created by `givemedata` based on the config you've just specified.
-It has the same nested structure as the config and even *supports autocompletion* :).
+It has the same nested structure as the config and even *supports autocompletion* :)
 
-By now only PostgreSQL is supported as the project is the earliest possible development stage. This was made to support my own
-workflow but I have plans to improve this and add support for different databases such as MySQL, SQLite3, Cassandra, etc
+Let's assume we want to address the Analytics db on production. This can me made as easy as this:
 
+`db = Data.Work.Prod.Analytics`
+
+#### Step 4:
+
+The DB object in `givemedata` have a few methods attached to it:
+
+`sql(query, *, limit)` -> returns an SQL query result as a Pandas DataFrame
+`public_tables` (property) -> returns a dataframe with information about all public tables in the DB.
+`all_tables` (property) -> returns a dataframe with information about all tables in the DB - both public and service.
+`public_fields` (property) -> all public fields
+`all_fields` (property) -> all fields, public and service
+
+These properties also provide some helpers:
+
+[for both - fields and tables]
+`search(term_as_string)` -> searches the table/field names by the given term
+
+[for tables only]
+`sample(df_index_as_int)` -> displays sample of table rows and metadata about the fields in the table
+
+#### Limitations & Other Notes
+
+- By now only PostgreSQL is supported as the project is in the earliest possible development stage. This was made to support my own workflow but I have plans to improve this and add support for different databases such as MySQL, SQLite3, Cassandra, etc
+- Only read operations are supported (this is the first priority in the road map, so it will be fixed soon)
