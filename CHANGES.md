@@ -11,3 +11,8 @@
 - Set default limit to None.
 - Add new module givemedata.utils
 - Add getters for SQLAlchemy engine and DB connection to the DB objects.
+
+### 0.1.3
+
+- Add __version__ variable.
+- Other minor changes.
