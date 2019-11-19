@@ -138,12 +138,18 @@ class DB(DataProvider):
             engine=self._engine,
         )
 
-    def sql(self, query, limit=2000):
+    def sql(self, query, limit=None):
         # emergency limiting so nothing will explode :)
         if limit is not None and 'limit' not in query.lower():
             query = query.replace('\n', ' ').strip().rstrip(';') + f' limit {limit};'
 
         return pd.read_sql(query, self._engine)
+
+    def get_connection(self):
+        return self._engine.connect()
+
+    def get_engine(self):
+        return self._engine
 
     @property
     def public_fields(self):
