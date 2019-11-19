@@ -34,6 +34,8 @@ setup(
     install_requires=[
         'pandas>=0.24.2',
         'SQLAlchemy>=1.3.3',
+        'pyyaml>=5.1',
+        'psycopg2-binary>=2.8.4',
     ],
     entry_points={
         'console_scripts': [
