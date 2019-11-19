@@ -1,6 +1,6 @@
 venv
 build.sh
-givemedata/__pycache__
+__pycache__
 build
 dist
 givemedata.egg-info
