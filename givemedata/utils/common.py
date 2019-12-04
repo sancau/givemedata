@@ -21,3 +21,13 @@ def persistent(path: str):
     return deco
 
 
+def chunks(iterable, chunk_size):
+    """Splits an iterable into chunks of size <chunk_size>.
+    
+    The last chunk can be shorter due to obvious reasons (if reminder is not 0).
+    """
+    return (
+        iterable[(0 + i):(chunk_size + i)] 
+        for i in range(0, len(iterable), chunk_size)
+    )
+
