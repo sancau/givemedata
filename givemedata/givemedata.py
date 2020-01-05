@@ -207,7 +207,7 @@ for config_source in CONFIG_SOURCES:
         with open(os.path.expanduser(config_source), 'r') as f:
             data = f.read()
             print(f'[GIVEMEDATA] Using config file at {config_source}')
-            dict_config = yaml.load(data)
+            dict_config = yaml.load(data, Loader=yaml.SafeLoader)
             break
     except FileNotFoundError:
         continue

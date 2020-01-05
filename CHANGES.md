@@ -16,3 +16,8 @@
 
 - Add __version__ variable.
 - Other minor changes.
+
+### 0.1.4
+
+- Fix yaml loader warning.
+- Minor changes in utils.pandas module

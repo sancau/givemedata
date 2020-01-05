@@ -31,11 +31,11 @@ def build_pipeline(operations):
     return pipeline
 
 
-def apply_pipeline(df, operations, multiprocessing=None, axis=1):
+def apply_pipeline(df, operations, workers=None, axis=1):
     assert axis == 1, 'Only axis=1 is supported.'
     pipeline = build_pipeline(operations)
-    if multiprocessing:
-        return multiprocess_apply(df, pipeline, axis=axis)
+    if workers:
+        return multiprocess_apply(df, pipeline, axis=axis, workers=workers)
     return df.apply(pipeline, axis=axis)
 
 
