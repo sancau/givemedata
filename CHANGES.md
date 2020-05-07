@@ -21,3 +21,8 @@
 
 - Fix yaml loader warning.
 - Minor changes in utils.pandas module
+
+### 0.2.0
+
+- Add experimental Cassandra support
+- Allow to reload configuration without kernel restart
