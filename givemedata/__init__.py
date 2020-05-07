@@ -1,14 +1,14 @@
-from .givemedata import dict_config
 from .givemedata import Data
 from .givemedata import get_provider_from_config
-from . import utils
+from .givemedata import init_provider
 from .version import VERSION as __version__
+from . import utils
 
 
 __all__ = [
-    dict_config,
     Data,
     get_provider_from_config,
+    init_provider,
     utils,
     __version__,
 ]
