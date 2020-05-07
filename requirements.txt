@@ -3,7 +3,6 @@ certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
 docutils==0.14
-givemedata==0.1.1
 idna==2.8
 numpy==1.16.3
 pandas==0.24.2
