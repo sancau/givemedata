@@ -25,7 +25,6 @@ class DataProvider:
         return self.__str__()
 
 
-
 class TablesList(pd.DataFrame):
     def __init__(self, df, *, engine):
         super().__init__(df)
@@ -175,7 +174,15 @@ class DB(DataProvider):
             engine=self._engine,
         )
 
-    
+
+CONFIG_SOURCES = [
+    '~/.givemedata.yaml',
+    '~/givemedata.yaml',
+    '/etc/givemedata/.givemedata.yaml',
+    '/etc/givemedata/givemedata.yaml',
+]
+
+
 def get_provider_from_config(d, key=None, lvl=0):
     root = DataProvider(name=key or 'GIVEMEDATA', cs=None, members=[], lvl=lvl)
     next_lvl = root._lvl + 1
@@ -192,28 +199,23 @@ def get_provider_from_config(d, key=None, lvl=0):
     return root
 
 
-CONFIG_SOURCES = [
-    '~/.givemedata.yaml',
-    '~/givemedata.yaml',
-    '/etc/givemedata/.givemedata.yaml',
-    '/etc/givemedata/givemedata.yaml',
-]
+def try_get_config_from_default_sources():
+    for config_source in CONFIG_SOURCES:
+        try:
+            with open(os.path.expanduser(config_source), 'r') as f:
+                print(f'[GIVEMEDATA] Using config file at {config_source}')
+                return yaml.load(f.read(), Loader=yaml.SafeLoader)
+        except FileNotFoundError:
+            continue
 
 
-Data = None
-dict_config = None
-for config_source in CONFIG_SOURCES:
-    try:
-        with open(os.path.expanduser(config_source), 'r') as f:
-            data = f.read()
-            print(f'[GIVEMEDATA] Using config file at {config_source}')
-            dict_config = yaml.load(data, Loader=yaml.SafeLoader)
-            break
-    except FileNotFoundError:
-        continue
+def init_provider():
+    config = try_get_config_from_default_sources()
+    if config:
+        return get_provider_from_config(config)
+
+    print('[GIVEMEDATA] Could not configure data provider.'
+          ' You can use get_provider_from_config function to pass a configuration object manually')
 
 
-if dict_config:
-    Data = get_provider_from_config(dict_config)
-else:
-    print('[GIVEMEDATA] Could not configure data provider. You can use get_provider_from_config function to pass a configuration object manualy')
+Data = init_provider()
