@@ -60,8 +60,8 @@ class TablesList(pd.DataFrame):
                  {table_name}
                 limit 1;
                 """,
-                        self._engine,
-                        ).T.reset_index().rename(
+                self._engine,
+            ).T.reset_index().rename(
                 columns={
                     'index': 'column_name',
                     0: 'example_value',
@@ -106,7 +106,7 @@ class FieldsList(pd.DataFrame):
         )
 
 
-class DB(DataProvider):
+class PostgresDB(DataProvider):
     def __init__(self, *, name, cs, members, lvl=0):
         super().__init__(name=name, cs=cs, members=members, lvl=lvl)
         self._engine = create_engine(cs)
@@ -175,12 +175,94 @@ class DB(DataProvider):
         )
 
 
+CASSANDRA_CONNECT_TIMEOUT_DEFAULT = 20
+CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT = 60
+CASSANDRA_DEFAULT_FETCH_SIZE = 5000
+
+
+def parse_cassandra_cs(cs: str) -> dict:
+    assert cs.split(':')[0] == 'cassandra', ('Invalid DB type', cs)
+
+    cs = cs.split('//')[1]
+    credentials, cs = cs.split('@')
+
+    username, password = credentials.split(':')
+    hosts, keyspace = cs.split('/')
+    hosts = hosts.split('--')
+
+    return dict(
+        hosts=hosts,
+        keyspace=keyspace,
+        username=username,
+        password=password,
+    )
+
+
+class CassandraDB(DataProvider):
+    def __init__(self, *, name, cs, members, lvl=0):
+        super().__init__(name=name, cs=cs, members=members, lvl=lvl)
+
+        self.connection = None
+        self.cassandra_config = parse_cassandra_cs(cs=cs)
+
+    def setup_global(self):
+        # cassandra driver imports
+        # make it optional so givemedata configs with no cassandra DBs will work without the driver
+        from cassandra.cqlengine import connection
+        from cassandra.auth import PlainTextAuthProvider
+
+        self.connection = connection
+        self.connection.setup(
+            self.cassandra_config['hosts'],
+            default_keyspace=self.cassandra_config['keyspace'],
+            auth_provider=PlainTextAuthProvider(
+                username=self.cassandra_config['username'],
+                password=self.cassandra_config['password'],
+            ),
+            connect_timeout=CASSANDRA_CONNECT_TIMEOUT_DEFAULT,
+            control_connection_timeout=CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT,
+        )
+
+    def cql(self, query: str) -> pd.DataFrame:
+        # cassandra driver imports
+        # make it optional so givemedata configs with no cassandra DBs will work without the driver
+        from cassandra.cluster import Cluster
+        from cassandra.auth import PlainTextAuthProvider
+
+        cluster = Cluster(
+            self.cassandra_config['hosts'],
+            auth_provider=PlainTextAuthProvider(
+                username=self.cassandra_config['username'],
+                password=self.cassandra_config['password'],
+            ),
+            connect_timeout=CASSANDRA_CONNECT_TIMEOUT_DEFAULT,
+            control_connection_timeout=CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT,
+        )
+
+        with cluster.connect(self.cassandra_config['keyspace']) as session:
+            session.default_fetch_size = CASSANDRA_DEFAULT_FETCH_SIZE
+            q_result = session.execute(query)
+            return pd.DataFrame(
+                q_result.current_rows,
+                columns=q_result.column_names,
+            )
+
+
 CONFIG_SOURCES = [
     '~/.givemedata.yaml',
     '~/givemedata.yaml',
     '/etc/givemedata/.givemedata.yaml',
     '/etc/givemedata/givemedata.yaml',
 ]
+
+
+def get_provider_class(cs):
+    # if cassandra return Cassandra etc
+    db_type = cs.split(':')[0]
+    return {
+        'postgresql': PostgresDB,
+        'cassandra': CassandraDB,
+    }[db_type]
 
 
 def get_provider_from_config(d, key=None, lvl=0):
@@ -193,7 +275,8 @@ def get_provider_from_config(d, key=None, lvl=0):
             setattr(root, key, get_provider_from_config(value, key=key, lvl=next_lvl))
             root._members.append(getattr(root, key))
         else:
-            setattr(root, key, DB(name=key, cs=value, members=[], lvl=next_lvl))
+            db_class: type(DataProvider) = get_provider_class(value)
+            setattr(root, key, db_class(name=key, cs=value, members=[], lvl=next_lvl))
             root._members.append(getattr(root, key))
 
     return root
