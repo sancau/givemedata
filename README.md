@@ -4,24 +4,85 @@ A convenient way to use and explore multiple databases from Python
 ### What is this?
 Using multiple data sources may become a pain to manage. You have different credentials here and there, different db names, different drivers and wrappers. You don't like that, do you?
 
-- Givemedata is a Python tool that allows to define a single configuration file containing all the data sources that you are using
-- Then it provides a simple way to access all of those data sources leveraging the power of Pandas
+- **Givemedata** is a Python tool that allows to define a single configuration file containing all the data sources that you are using
+- The tool introduces a simple way to access all of those data sources either by leveraging the power of Pandas or by providing you with raw driver connection/engine. 
+- It is also really helpful when you need to maintain a shared configuration that can be used by multiple users (for example a data science team or an analytics department)
 
-Here is a simple example:
+Consider example usage scenario described below:
 
 #### Step 1 (Installation):
 
-`pip install givemedata`
+`pip install -U givemedata`
 
 #### Step 2 (Configuration):
 
-Create a configuration file in YAML format - either in your home directory to use just by yourself or in `/etc/givemedata/`
-to provide the configuration to multiple users at once (e.g. if you're using JupyterHub)
+First of all you will need to create a configuration file in YAML format.
 
-The file must be named either `givemedata.yaml` or `.givemedata.yaml` (in case if you prefer to have a hidden file)
+Givemedata provides sensible defaults on where to store configuration file.
 
-Example of configuration:
+Optionally, it's aslo possible to specify config directory by setting ENV variable with name `GIVEMEDATA_CONFIG_DIR`.
+If set, this directory will be prioritized among other defaults.
 
+Givemedata will walk through the prioritized list of possible paths and load the first configuration met.
+
+The prioritized lists for **Linux**, **Windows** and **MacOS** are shown below:
+
+##### Linux (ordered by priority)
+- `$GIVEMEDATA_CONFIG_DIR/.givemedata.yaml`
+- `$GIVEMEDATA_CONFIG_DIR/.givemedata.yml`
+- `$GIVEMEDATA_CONFIG_DIR/givemedata.yaml`
+- `$GIVEMEDATA_CONFIG_DIR/givemedata.yml`
+- `$HOME/.givemedata.yaml`
+- `$HOME/.givemedata.yml`
+- `$HOME/givemedata.yaml`
+- `$HOME/givemedata.yml`
+- `/etc/givemedata/.givemedata.yaml`
+- `/etc/givemedata/.givemedata.yml`
+- `/etc/givemedata/givemedata.yaml`
+- `/etc/givemedata/givemedata.yml`
+
+##### Windows (ordered by priority)
+- `%GIVEMEDATA_CONFIG_DIR%/.givemedata.yaml`
+- `%GIVEMEDATA_CONFIG_DIR%/.givemedata.yml`
+- `%GIVEMEDATA_CONFIG_DIR%/givemedata.yaml`
+- `%GIVEMEDATA_CONFIG_DIR%/givemedata.yml`
+- `%HOME%/.givemedata.yaml`
+- `%HOME%/.givemedata.yml`
+- `%HOME%/givemedata.yaml`
+- `%HOME%/givemedata.yml`
+- `%APPDATA%/givemedata/.givemedata.yaml`
+- `%APPDATA%/givemedata/.givemedata.yml`
+- `%APPDATA%/givemedata/givemedata.yaml`
+- `%APPDATA%/givemedata/givemedata.yml`
+- `%PROGRAMDATA%/givemedata/.givemedata.yaml`
+- `%PROGRAMDATA%/givemedata/.givemedata.yml`
+- `%PROGRAMDATA%/givemedata/givemedata.yaml`
+- `%PROGRAMDATA%/givemedata/givemedata.yml`
+
+##### MacOS (ordered by priority)
+- `$GIVEMEDATA_CONFIG_DIR/.givemedata.yaml`
+- `$GIVEMEDATA_CONFIG_DIR/.givemedata.yml`
+- `$GIVEMEDATA_CONFIG_DIR/givemedata.yaml`
+- `$GIVEMEDATA_CONFIG_DIR/givemedata.yml`
+- `$HOME/.givemedata.yaml`
+- `$HOME/.givemedata.yml`
+- `$HOME/givemedata.yaml`
+- `$HOME/givemedata.yml`
+- `$HOME/Library/givemedata/.givemedata.yaml`
+- `$HOME/Library/givemedata/.givemedata.yml`
+- `$HOME/Library/givemedata/givemedata.yaml`
+- `$HOME/Library/givemedata/givemedata.yml`
+- `/Library/givemedata/.givemedata.yaml`
+- `/Library/givemedata/.givemedata.yml`
+- `/Library/givemedata/givemedata.yaml`
+- `/Library/givemedata/givemedata.yml`
+
+The priority system is helpful when you need to provide the configuration to multiple users at once (e.g. if you're using JupyterHub)
+
+The file must be named either `givemedata.yaml` or `.givemedata.yaml` in case if you prefer to have a hidden file.
+File extension can be either `.yaml` or `.yml`.
+
+##### Example of configuration:
 ```
 Work:
   Prod:
@@ -73,7 +134,9 @@ The DB object in `givemedata` have a few methods attached to it:
 - (for tables only)
 - `describe(df_index_as_int)` -> displays meta data about the table - fields, datatypes, etc
 
-#### Limitations & Other Notes
+##### Using DB driver directly
 
-- By now only PostgreSQL is supported as the project is in the earliest possible development stage. This was made to support my own workflow but I have plans to improve this and add support for different databases such as MySQL, SQLite3, Cassandra, etc
-- Only read operations are supported (this is the first priority in the road map, so it will be fixed soon)
+Use special provider methods:
+
+- `get_connection()`
+- `get_engine()`
