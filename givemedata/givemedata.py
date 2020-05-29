@@ -1,8 +1,49 @@
 import os
+import platform
 import yaml
+
+from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import create_engine
+
+# the below configuration specifies the places for Givemedata to search for config
+PLATFORM = platform.system()
+
+if PLATFORM == 'Windows':
+    CONFIG_DIRS = [
+        Path(os.getenv('HOME')),
+        Path(os.getenv('APPDATA')) / Path('givemedata'),
+        Path(os.getenv('PROGRAMDATA')) / Path('givemedata'),
+    ]
+elif PLATFORM == 'Darwin':
+    CONFIG_DIRS = [
+        Path(os.getenv('HOME')),
+        Path('~/Library') / Path('givemedata'),
+        Path('/Library') / Path('givemedata'),
+    ]
+else:
+    CONFIG_DIRS = [
+        Path(os.getenv('HOME')),
+        Path('/etc') / Path('givemedata'),
+    ]
+
+# if GIVEMEDATA_CONFIG_DIR env variable is specified use it with priority
+custom_dir = os.getenv('GIVEMEDATA_CONFIG_DIR')
+if custom_dir:
+    CONFIG_DIRS.insert(0, Path(custom_dir))
+
+POSSIBLE_CONFIG_FILE_NAMES = [
+    Path('.givemedata.yaml'),
+    Path('.givemedata.yml'),
+    Path('givemedata.yaml'),
+    Path('givemedata.yml'),
+]
+
+CONFIG_SOURCES = []
+for path in CONFIG_DIRS:
+    for filename in POSSIBLE_CONFIG_FILE_NAMES:
+        CONFIG_SOURCES.append(path / filename)
 
 
 class DataProvider:
@@ -246,14 +287,6 @@ class CassandraDB(DataProvider):
                 q_result.current_rows,
                 columns=q_result.column_names,
             )
-
-
-CONFIG_SOURCES = [
-    '~/.givemedata.yaml',
-    '~/givemedata.yaml',
-    '/etc/givemedata/.givemedata.yaml',
-    '/etc/givemedata/givemedata.yaml',
-]
 
 
 def get_provider_class(cs):
