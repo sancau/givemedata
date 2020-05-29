@@ -26,3 +26,8 @@
 
 - Add experimental Cassandra support
 - Allow to reload configuration without kernel restart
+
+### 0.2.1
+
+- Add support for Windows and MacOS config paths
+- Add support for custom config directory by settings env variable GIVEMEDATA_CONFIG_DIR
