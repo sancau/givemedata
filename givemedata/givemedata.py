@@ -19,7 +19,7 @@ if PLATFORM == 'Windows':
 elif PLATFORM == 'Darwin':
     CONFIG_DIRS = [
         Path(os.getenv('HOME')),
-        Path('~/Library') / Path('givemedata'),
+        Path(os.getenv('HOME')) / Path('Library') / Path('givemedata'),
         Path('/Library') / Path('givemedata'),
     ]
 else:
