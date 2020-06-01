@@ -10,23 +10,32 @@ from sqlalchemy import create_engine
 # the below configuration specifies the places for Givemedata to search for config
 PLATFORM = platform.system()
 
+CONFIG_DIRS = []
+
 if PLATFORM == 'Windows':
-    CONFIG_DIRS = [
-        Path(os.getenv('HOME')),
-        Path(os.getenv('APPDATA')) / Path('givemedata'),
-        Path(os.getenv('PROGRAMDATA')) / Path('givemedata'),
-    ]
+    home, appdata, programdata = map(os.getenv, ['HOME', 'APPDATA', 'PROGRAMDATA'])
+    if home:
+        CONFIG_DIRS.append(Path(home))
+    if appdata:
+        CONFIG_DIRS.append(Path(appdata))
+    if programdata:
+        CONFIG_DIRS.append(Path(programdata))
+
 elif PLATFORM == 'Darwin':
-    CONFIG_DIRS = [
-        Path(os.getenv('HOME')),
-        Path(os.getenv('HOME')) / Path('Library') / Path('givemedata'),
-        Path('/Library') / Path('givemedata'),
-    ]
+    home = os.getenv('HOME')
+    if home:
+        CONFIG_DIRS.append(Path(home))
+        CONFIG_DIRS.append(Path(home) / Path('Library') / Path('givemedata'))
+    CONFIG_DIRS.append(Path('/Library') / Path('givemedata'))
+
+elif PLATFORM == 'Linux':
+    home = os.getenv('HOME')
+    if home:
+        CONFIG_DIRS.append(Path(home))
+    CONFIG_DIRS.append(Path('/etc') / Path('givemedata'))
+
 else:
-    CONFIG_DIRS = [
-        Path(os.getenv('HOME')),
-        Path('/etc') / Path('givemedata'),
-    ]
+    raise ValueError(f'Unsupported platform: {PLATFORM}')
 
 # if GIVEMEDATA_CONFIG_DIR env variable is specified use it with priority
 custom_dir = os.getenv('GIVEMEDATA_CONFIG_DIR')
