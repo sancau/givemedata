@@ -31,3 +31,7 @@
 
 - Add support for Windows and MacOS config paths
 - Add support for custom config directory by settings env variable GIVEMEDATA_CONFIG_DIR
+
+### 0.2.2
+
+- Hot fix. Handle possible missing environment variables.
