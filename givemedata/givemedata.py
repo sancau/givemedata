@@ -3,9 +3,11 @@ import platform
 import yaml
 
 from pathlib import Path
+from ssl import SSLContext, PROTOCOL_TLSv1, CERT_REQUIRED
 
 import pandas as pd
 from sqlalchemy import create_engine
+
 
 # the below configuration specifies the places for Givemedata to search for config
 PLATFORM = platform.system()
@@ -56,7 +58,7 @@ for path in CONFIG_DIRS:
 
 
 class DataProvider:
-    def __init__(self, *, name, cs, members, lvl=0):
+    def __init__(self, *, name, cs, members, lvl=0, config_source, full_path):
         assert isinstance(cs, str) or isinstance(cs, type(None)), (cs, 'should be a string or None')
         assert isinstance(name, str), (name, 'should be a string.')
 
@@ -64,6 +66,17 @@ class DataProvider:
         self._name = name
         self._members = members
         self._lvl = lvl
+        self._config_source = config_source
+        self._full_path = full_path
+        self._ssl_cert_path = self._config_source.parent / Path(f'{self._full_path}_{self._name}.givemedata.cer')
+
+        # if SSL cert provided - configure context
+        if self._ssl_cert_path.exists():
+            self.ssl_context = SSLContext(PROTOCOL_TLSv1)
+            self.ssl_context.load_verify_locations(self._ssl_cert_path)
+            self.ssl_context.verify_mode = CERT_REQUIRED
+        else:
+            self.ssl_context = None
 
     def __str__(self):
         spaces = '    ' * self._lvl
@@ -157,8 +170,8 @@ class FieldsList(pd.DataFrame):
 
 
 class PostgresDB(DataProvider):
-    def __init__(self, *, name, cs, members, lvl=0):
-        super().__init__(name=name, cs=cs, members=members, lvl=lvl)
+    def __init__(self, *, name, cs, members, lvl=0, config_source, full_path):
+        super().__init__(name=name, cs=cs, members=members, lvl=lvl, config_source=config_source, full_path=full_path)
         self._engine = create_engine(cs)
 
     @property
@@ -249,17 +262,28 @@ def parse_cassandra_cs(cs: str) -> dict:
 
 
 class CassandraDB(DataProvider):
-    def __init__(self, *, name, cs, members, lvl=0):
-        super().__init__(name=name, cs=cs, members=members, lvl=lvl)
-
+    def __init__(self, *, name, cs, members, lvl=0, config_source, full_path):
+        super().__init__(name=name, cs=cs, members=members, lvl=lvl, config_source=config_source, full_path=full_path)
         self.connection = None
         self.cassandra_config = parse_cassandra_cs(cs=cs)
 
-    def setup_global(self):
-        # cassandra driver imports
-        # make it optional so givemedata configs with no cassandra DBs will work without the driver
-        from cassandra.cqlengine import connection
-        from cassandra.auth import PlainTextAuthProvider
+    def setup_global(self, *, connect_timeout=None, control_connection_timeout=None, ssl_context=None):
+        try:
+            # cassandra driver imports
+            # importing on-demand so givemedata configs with no cassandra DBs will work without the driver
+            from cassandra.cqlengine import connection
+            from cassandra.auth import PlainTextAuthProvider
+        except ImportError as e:
+            print('There is a Cassandra DB in the Givemedata config, but Cassandra driver is not installed. '
+                  'Try installing "cassandra-driver" with pip.')
+            raise e
+
+        if connect_timeout is None:
+            connect_timeout = CASSANDRA_CONNECT_TIMEOUT_DEFAULT
+        if control_connection_timeout is None:
+            control_connection_timeout = CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT
+        if ssl_context is None:
+            ssl_context = self.ssl_context
 
         self.connection = connection
         self.connection.setup(
@@ -269,15 +293,33 @@ class CassandraDB(DataProvider):
                 username=self.cassandra_config['username'],
                 password=self.cassandra_config['password'],
             ),
-            connect_timeout=CASSANDRA_CONNECT_TIMEOUT_DEFAULT,
-            control_connection_timeout=CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT,
+            connect_timeout=connect_timeout,
+            control_connection_timeout=control_connection_timeout,
+            ssl_context=ssl_context,
+            load_balancing_policy=None,
         )
+        print('[GIVEMEDATA] Cassandra connection has been set up.')
 
-    def cql(self, query: str) -> pd.DataFrame:
-        # cassandra driver imports
-        # make it optional so givemedata configs with no cassandra DBs will work without the driver
-        from cassandra.cluster import Cluster
-        from cassandra.auth import PlainTextAuthProvider
+    def cql(self, query: str, *, connect_timeout=None, control_connection_timeout=None, fetch_size=None, ssl_context=None) -> pd.DataFrame:
+        try:
+            # cassandra driver imports
+            # importing on-demand so givemedata configs with no cassandra DBs will work without the driver
+            from cassandra.cluster import Cluster
+            from cassandra.cqlengine import connection
+            from cassandra.auth import PlainTextAuthProvider
+        except ImportError as e:
+            print('There is a Cassandra DB in the Givemedata config, but Cassandra driver is not installed. '
+                  'Try installing "cassandra-driver" with pip.')
+            raise e
+
+        if connect_timeout is None:
+            connect_timeout = CASSANDRA_CONNECT_TIMEOUT_DEFAULT
+        if control_connection_timeout is None:
+            control_connection_timeout = CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT
+        if fetch_size is None:
+            fetch_size = CASSANDRA_DEFAULT_FETCH_SIZE
+        if ssl_context is None:
+            ssl_context = self.ssl_context
 
         cluster = Cluster(
             self.cassandra_config['hosts'],
@@ -285,12 +327,14 @@ class CassandraDB(DataProvider):
                 username=self.cassandra_config['username'],
                 password=self.cassandra_config['password'],
             ),
-            connect_timeout=CASSANDRA_CONNECT_TIMEOUT_DEFAULT,
-            control_connection_timeout=CASSANDRA_CONTROL_CONNECTION_TIMEOUT_DEFAULT,
+            connect_timeout=connect_timeout,
+            control_connection_timeout=control_connection_timeout,
+            ssl_context=self.ssl_context,
+            load_balancing_policy=None,
         )
 
         with cluster.connect(self.cassandra_config['keyspace']) as session:
-            session.default_fetch_size = CASSANDRA_DEFAULT_FETCH_SIZE
+            session.default_fetch_size = fetch_size
             q_result = session.execute(query)
             return pd.DataFrame(
                 q_result.current_rows,
@@ -299,7 +343,6 @@ class CassandraDB(DataProvider):
 
 
 def get_provider_class(cs):
-    # if cassandra return Cassandra etc
     db_type = cs.split(':')[0]
     return {
         'postgresql': PostgresDB,
@@ -307,18 +350,25 @@ def get_provider_class(cs):
     }[db_type]
 
 
-def get_provider_from_config(d, key=None, lvl=0):
-    root = DataProvider(name=key or 'GIVEMEDATA', cs=None, members=[], lvl=lvl)
+def get_provider_from_config(*, config, config_source, key=None, lvl=0, full_path=None):
+    if key is None:
+        key = ''
+    if full_path:
+        full_path = f'{full_path}_{key}'
+    else:
+        full_path = key
+
+    root = DataProvider(name=key or 'GIVEMEDATA', cs=None, members=[], lvl=lvl, config_source=config_source, full_path=full_path)
     next_lvl = root._lvl + 1
 
-    for key, value in d.items():
+    for key, value in config.items():
         # node will be either a connection string or will have an inner structure of nodes
         if isinstance(value, dict):
-            setattr(root, key, get_provider_from_config(value, key=key, lvl=next_lvl))
+            setattr(root, key, get_provider_from_config(config=value, key=key, lvl=next_lvl, config_source=config_source, full_path=full_path))
             root._members.append(getattr(root, key))
         else:
             db_class: type(DataProvider) = get_provider_class(value)
-            setattr(root, key, db_class(name=key, cs=value, members=[], lvl=next_lvl))
+            setattr(root, key, db_class(name=key, cs=value, members=[], lvl=next_lvl, config_source=config_source, full_path=full_path))
             root._members.append(getattr(root, key))
 
     return root
@@ -329,7 +379,10 @@ def try_get_config_from_default_sources():
         try:
             with open(os.path.expanduser(config_source), 'r') as f:
                 print(f'[GIVEMEDATA] Using config file at {config_source}')
-                return yaml.load(f.read(), Loader=yaml.SafeLoader)
+                return {
+                    'config': yaml.load(f.read(), Loader=yaml.SafeLoader),
+                    'config_source': config_source,
+                }
         except FileNotFoundError:
             continue
 
@@ -337,7 +390,7 @@ def try_get_config_from_default_sources():
 def init_provider():
     config = try_get_config_from_default_sources()
     if config:
-        return get_provider_from_config(config)
+        return get_provider_from_config(**config)
 
     print('[GIVEMEDATA] Could not configure data provider.'
           ' You can use get_provider_from_config function to pass a configuration object manually')
