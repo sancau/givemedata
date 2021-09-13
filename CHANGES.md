@@ -1,3 +1,7 @@
+### 0.4.0
+
+- Improve Cassandra interaction API.
+
 ### 0.3.0
 
 - Experimental SSL support for Cassandra.
