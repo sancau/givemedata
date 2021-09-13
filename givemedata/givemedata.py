@@ -300,7 +300,7 @@ class CassandraDB(DataProvider):
         )
         print('[GIVEMEDATA] Cassandra connection has been set up.')
 
-    def cql(self, query: str, *, connect_timeout=None, control_connection_timeout=None, fetch_size=None, ssl_context=None) -> pd.DataFrame:
+    def get_session(self, *, connect_timeout=None, control_connection_timeout=None, fetch_size=None, ssl_context=None):
         try:
             # cassandra driver imports
             # importing on-demand so givemedata configs with no cassandra DBs will work without the driver
@@ -329,17 +329,36 @@ class CassandraDB(DataProvider):
             ),
             connect_timeout=connect_timeout,
             control_connection_timeout=control_connection_timeout,
-            ssl_context=self.ssl_context,
+            ssl_context=ssl_context,
             load_balancing_policy=None,
         )
 
-        with cluster.connect(self.cassandra_config['keyspace']) as session:
-            session.default_fetch_size = fetch_size
-            q_result = session.execute(query)
-            return pd.DataFrame(
-                q_result.current_rows,
-                columns=q_result.column_names,
+        session = cluster.connect(self.cassandra_config['keyspace'])
+        session.default_fetch_size = fetch_size
+
+        return session
+
+    def cql(self, query: str, *, session=None, connect_timeout=None, control_connection_timeout=None, fetch_size=None, ssl_context=None) -> pd.DataFrame:
+        one_time_session = False
+        if session is None:
+            session = self.get_session(
+                connect_timeout=connect_timeout,
+                control_connection_timeout=control_connection_timeout,
+                fetch_size=fetch_size,
+                ssl_context=ssl_context,
             )
+            one_time_session = True
+
+        q_result = session.execute(query)
+        df = pd.DataFrame(
+            q_result.current_rows,
+            columns=q_result.column_names,
+        )
+
+        if one_time_session:
+            session.shutdown()
+
+        return df
 
 
 def get_provider_class(cs):
